@@ -119,17 +119,13 @@ static void _php_threads_join_children(void *data)
 	
 	THR_PRINTF(("threads:_php_threads_join_children\n"));
 	thr_wait_exit(thread);
-	THR_PRINTF(("threads:_php_threads_join_children thr_wait_exit over\n"));
+
 	thr_close_event(thread->start_event);
-	THR_PRINTF(("threads:_php_threads_join_children close_event over\n"));
 
 	//efree chrashes at shutdown, so "normal" free will be used
 	//TSRM_FETCH seems to crash
 	//efree(thread);
-	THR_PRINTF(("threads:_php_threads_join_children free ready\n"));
-
 	//free(thread);
-	THR_PRINTF(("threads:_php_threads_join_children free over\n"));
 	
 	thread = NULL;
 }
@@ -188,7 +184,6 @@ PHP_RINIT_FUNCTION(threads)
 		/* only the master thread creates this */
                 /* avoid emalloc ... - it gets totally confused with the threading stuff */
 		shared_vars = (THR_SHARED_VARS *) malloc(sizeof(THR_SHARED_VARS));
-		THR_PRINTF(("thread:rinit VARS\n"));
 		shared_vars->rwlock = thr_create_rwlock();
 		zend_hash_init(&shared_vars->vars, 0, NULL, NULL,0);
 	}
@@ -207,8 +202,8 @@ PHP_RSHUTDOWN_FUNCTION(threads)
 	   all THREADS_G(children) to exit */
 	THR_PRINTF(("thread:rshutdown\n"));
 	if(THREADS_G(children).count >= 1) {
-	  THR_PRINTF(("thread:THREADS_G(children) gefunden\n"));
-      //TODO: wait for THREADS_G(children) to be executed; send KILL signal 
+	  THR_PRINTF(("thread:children found\n"));
+      //TODO: wait for children to be executed; send KILL signal 
 	  zend_llist_destroy(&THREADS_G(children));
 	}
 	if (!THREADS_G(self)) {
@@ -225,7 +220,7 @@ PHP_RSHUTDOWN_FUNCTION(threads)
 
 	} else {
 	  //thr_wait_exit(THREADS_G(self));
-	  THR_PRINTF(("its a meeeeeee\n"));
+          //Currently Nothing to do here
 	  //thr_thread_exit(0);
 
 	}
@@ -286,7 +281,7 @@ THR_THREAD_PROC(phpthreads_create) {
 	//UpdateIniFromRegistry(SG(request_info).path_translated TSRMLS_CC);
 #endif
 
-	THR_PRINTF(("Call User Func ??????\n\n==================n\n"));
+	THR_PRINTF(("Call User Func\n"));
 	/* this can be an issue we have to deal with somehow */
 	SG(headers_sent) = 1;
 	SG(request_info).no_headers = 1;
@@ -428,7 +423,7 @@ void phpthreads_include (void * data) {
 	EG(return_value_ptr_ptr) = &result;
 	EG(active_op_array) = op_array;
 
-    zend_execute(op_array TSRMLS_CC);
+	zend_execute(op_array TSRMLS_CC);
 
 	destroy_op_array(op_array TSRMLS_CC);
 	efree(op_array);
@@ -548,10 +543,10 @@ PHP_FUNCTION(thread_set)
 	switch(Z_TYPE_PP(&var)) {
 		case IS_RESOURCE:
 			//TODO: special Handling for Resources
-			THR_PRINTF(("RESOURCE ====================================================\n"));
+			THR_PRINTF(("RESOURCE IS NOT ALLOWED\n"));
 			break;
 		case IS_OBJECT:
-			THR_PRINTF(("OBJECT ====================================================\n"));
+			THR_PRINTF(("OBJECT IS NOT ALLOWED\n"));
 			//TODO: Special Handling for Objects
 			break;
 		default:
