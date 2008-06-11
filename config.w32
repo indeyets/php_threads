@@ -1,0 +1,11 @@
+// $Id: config.w32,v 1.1 2003/12/20 01:44:44 wez Exp $
+// vim:ft=javascript
+
+ARG_WITH("threads", "THREADS support", "no");
+
+if (PHP_THREADS != "no") {
+	EXTENSION('threads', 'threads.c threadapi.c');
+	AC_DEFINE('HAVE_THREADS', 1);
+}
+
+
