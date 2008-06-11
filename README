@@ -1,0 +1,38 @@
+This is highly experimental.
+Run this only in CLI mode!
+
+Example
+
+master.php
+<?php
+
+$array = array(
+0 => 'thread',
+1 => 'hello',
+2 => 'world');
+
+thread_set('mySharedVar', $array);
+
+thread_include('thread.php');
+
+sleep(3);
+
+echo 'Done';
+
+
+?>
+
+thread.php
+<?php
+
+$array = thread_get('mySharedVar');
+
+print_r($array);
+
+sleep(5);
+
+echo 'Done';
+
+?>
+
+
