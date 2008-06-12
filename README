@@ -1,6 +1,6 @@
 This is highly experimental.
 Run this only in CLI mode!
-
+t
 Example
 
 master.php
@@ -35,4 +35,9 @@ echo 'Done';
 
 ?>
 
+Do not load the extension with dl(). The thread-functions are working like normal SAPI calls
+and creating a new context by calling php_startup_request(). Extensions loaded by dl() seems to be
+bound to the calling request.
 
+The example-code is working on WinXP (PHP-5.2.6 and 5.3) and Linux (Ubuntu 7.10/ PHP-5.2.6 GCC 4.1). 
+OS X 10 is getting evaluated currently but it seems to be unstable.
