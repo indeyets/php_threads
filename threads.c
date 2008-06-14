@@ -220,6 +220,7 @@ PHP_RSHUTDOWN_FUNCTION(threads)
 		}
 		zend_hash_destroy(&shared_vars->vars);
 		thr_close_rwlock(shared_vars->rwlock);
+		free(shared_vars);
 	} else {
 		THR_PRINTF(("thread:rshutdown:child\n"));
 		//thr_wait_exit(THREADS_G(self));
@@ -375,19 +376,21 @@ PHP_FUNCTION(thread_start)
 void phpthreads_include (void * data) {
 
 	zval *result = NULL;
-    zend_op_array *op_array;
+	zend_op_array *op_array;
 	int callback_len = 0;
 	zend_file_handle file_handle;
 	THR_THREAD *thread = (THR_THREAD *) data;
 	/* void **thr_data = thread->args; */
 	char *script_file;
+	int len = 0;
 
 	/*char *script_file = (char *)estrdup((char *) thr_data[0]);*/
 	//THR_SHARED_VARS *vars = (THR_SHARED_VARS *) thread->args[1];
 	TSRMLS_FETCH();
 
-	script_file = (char *)  thread->args[0];
-	THR_PRINTF(("starting thread %s \n",  script_file))
+	len = strlen((char *) thread->args[0]);
+	script_file= (char *) malloc(len + 1);
+	strncpy(script_file , (char *) thread->args[0], len+1);
 
 	thread->args[0] = NULL;
 	/* we need to have the same context as the parent thread */
@@ -410,7 +413,8 @@ void phpthreads_include (void * data) {
 	SG(request_info).no_headers = 1;
 
 	file_handle.handle.fp = VCWD_FOPEN(script_file, "rb");
-	file_handle.filename = script_file;
+	file_handle.filename = (char *)emalloc(len +1);
+	strncpy(file_handle.filename, script_file, len+1);
 
 	file_handle.type = ZEND_HANDLE_FP;
 	file_handle.opened_path = NULL;
@@ -442,10 +446,11 @@ void phpthreads_include (void * data) {
 
 	THR_PRINTF(("done request shutdown \n"));
 
+	free(script_file);
 	/* found in tsrm.c and is extremly useful */
 	ts_free_thread();
 
-	free(thread);
+	//free(thread);
 	thr_thread_exit(0);
 
 }
@@ -474,7 +479,7 @@ PHP_FUNCTION(thread_include)
 //		zend_hash_init(&shared_vars->vars, 0, NULL, NULL,0);
 //		vars = shared_vars;
 //	}
-	script_file= (char *) emalloc(len + 1);
+	script_file= (char *) malloc(len + 1);
 	strncpy(script_file , script_file_in,  len+1);
          /* avoid emalloc ... - it gets totally confused with the threading stuff */
 	thread = (THR_THREAD *) malloc(sizeof(THR_THREAD));
@@ -495,6 +500,10 @@ PHP_FUNCTION(thread_include)
 	thr_wait_event(thread->start_event,THR_INFINITE);
 	THR_PRINTF(("got message that thread had finished initializing   \n"))
 	zend_llist_add_element(&THREADS_G(children), (void *)thread);
+	
+	free(script_file);
+	thread->parent_tls = NULL;
+	free(thread);
 
 	RETURN_TRUE;
 }
@@ -654,7 +663,7 @@ PHP_FUNCTION(thread_isset)
 		RETURN_FALSE;
 	}
 
-	if(zend_hash_exists(&shared_vars->vars, name, len)) {
+	if(zend_hash_exists(&shared_vars->vars, name, len+1)) {
 		THR_PRINTF(("thread_isset: %s exists\n", name));
 		RETURN_TRUE;
 	} else {
@@ -677,9 +686,9 @@ PHP_FUNCTION(thread_unset)
 		RETURN_FALSE;
 	}
 
-	if(zend_hash_exists(&shared_vars->vars, name, len)) {
+	if(zend_hash_exists(&shared_vars->vars, name, len+1)) {
 		THR_PRINTF(("thread_unset: unsetting %s \n", name));
-		zend_hash_del(&shared_vars->vars, name, len);
+		zend_hash_del(&shared_vars->vars, name, len+1);
 	}
 
 	RETURN_TRUE;
