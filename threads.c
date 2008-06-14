@@ -18,16 +18,16 @@
 */
 
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+# include "config.h"
 #endif
 
 /* debugging - use THR_PRINTF(("somthing %s", string)); - note the double brackets.. */
 #define THR_DEBUG
- 
+
 #ifdef THR_DEBUG
-#define THR_PRINTF(v) printf v; fflush(stdout);
+# define THR_PRINTF(v) printf v; fflush(stdout);
 #else
-#define THR_PRINTF(v)
+# define THR_PRINTF(v)
 #endif
 
 //#define USE_SERIALIZE
@@ -44,7 +44,7 @@
 #endif
 
 #ifndef ZTS
-/* ZTS REQUIRED */
+# error ZTS is required
 #endif
 
 
@@ -116,7 +116,7 @@ static void _php_threads_join_children(void *data)
 {
 	/* TODO: join or wait for children to end */
 	THR_THREAD *thread = (THR_THREAD *) data;
-	
+
 	THR_PRINTF(("threads:_php_threads_join_children\n"));
 	thr_wait_exit(thread);
 
@@ -126,7 +126,7 @@ static void _php_threads_join_children(void *data)
 	//TSRM_FETCH seems to crash
 	//efree(thread);
 	//free(thread);
-	
+
 	thread = NULL;
 }
 
@@ -135,7 +135,7 @@ static void _php_threads_join_children(void *data)
 
 /* {{{ php_threads_init_globals
  */
- 
+
 static void _php_threads_init_globals(zend_threads_globals *threads_globals)
 {
 }
@@ -147,9 +147,9 @@ PHP_MINIT_FUNCTION(threads)
 {
 	THR_PRINTF(("thread:minit\n"));
 	ZEND_INIT_MODULE_GLOBALS(threads, _php_threads_init_globals, NULL);
-	/* If you have INI entries, uncomment these lines 
+	/* If you have INI entries, uncomment these lines
 	REGISTER_INI_ENTRIES();
-	*/ 
+	*/
 
 
 
@@ -163,7 +163,7 @@ PHP_MSHUTDOWN_FUNCTION(threads)
 {
 	/* uncomment this line if you have INI entries
 	UNREGISTER_INI_ENTRIES();
-	*/ 
+	*/
 	/* TODO: initialize some kind of shared memory for shared vars */
 	THR_PRINTF(("module shutdown in thread\n"));
 	return SUCCESS;
@@ -182,10 +182,10 @@ PHP_RINIT_FUNCTION(threads)
 
 	if (!shared_vars) {
 		/* only the master thread creates this */
-                /* avoid emalloc ... - it gets totally confused with the threading stuff */
+		/* avoid emalloc ... - it gets totally confused with the threading stuff */
 		shared_vars = (THR_SHARED_VARS *) malloc(sizeof(THR_SHARED_VARS));
 		shared_vars->rwlock = thr_create_rwlock();
-		zend_hash_init(&shared_vars->vars, 0, NULL, NULL,0);
+		zend_hash_init(&shared_vars->vars, 0, NULL, NULL, 0);
 	}
 
 	zend_llist_init(&THREADS_G(children), sizeof(THR_THREAD),_php_threads_join_children, 0);
@@ -201,29 +201,32 @@ PHP_RSHUTDOWN_FUNCTION(threads)
 	/* destroying the THREADS_G(children) makes this thread wait for
 	   all THREADS_G(children) to exit */
 	THR_PRINTF(("thread:rshutdown\n"));
-	if(THREADS_G(children).count >= 1) {
-	  THR_PRINTF(("thread:children found\n"));
-      //TODO: wait for children to be executed; send KILL signal 
-	  zend_llist_destroy(&THREADS_G(children));
+
+	if (THREADS_G(children).count >= 1) {
+		THR_PRINTF(("thread:children found\n"));
+		//TODO: wait for children to be executed; send KILL signal
+		zend_llist_destroy(&THREADS_G(children));
 	}
+
 	if (!THREADS_G(self)) {
-		THR_PRINTF(("thread:rshutdown:thread_self\n"));
 		/* since self was never set, this is the master thread */
-		//zend_hash_destroy(&shared_vars->vars);
-  	    //thr_close_rwlock(shared_vars->rwlock);
-		/* Daniel: Of course this will only be called if there are some shared vars */
-		if(shared_vars && shared_vars->vars.nNumOfElements > 0) {
-          THR_PRINTF(("thread:shared vars found: %d\n", shared_vars->vars.nNumOfElements));
-          zend_hash_destroy(&shared_vars->vars);
-		  thr_close_rwlock(shared_vars->rwlock);
+		THR_PRINTF(("thread:rshutdown:master\n"));
+
+		THR_PRINTF(("thread:rshutdown:shared vars found: %d\n", shared_vars->vars.nNumOfElements));
+		if (shared_vars && shared_vars->vars.nNumOfElements > 0) {
+			// Daniel: Of course this will only be called if there are some shared vars
+			// TODO: iteate over hash and delete items
+			THR_PRINTF(("TODO: delete items from storage\n"));
 		}
-
+		zend_hash_destroy(&shared_vars->vars);
+		thr_close_rwlock(shared_vars->rwlock);
 	} else {
-	  //thr_wait_exit(THREADS_G(self));
-          //Currently Nothing to do here
-	  //thr_thread_exit(0);
-
+		THR_PRINTF(("thread:rshutdown:child\n"));
+		//thr_wait_exit(THREADS_G(self));
+		//Currently Nothing to do here
+		//thr_thread_exit(0);
 	}
+
 	THR_PRINTF(("request shutdown in thread\n"));
 	return SUCCESS;
 }
@@ -233,7 +236,7 @@ PHP_RSHUTDOWN_FUNCTION(threads)
  */
 PHP_MINFO_FUNCTION(threads)
 {
-	php_info_print_table_start(); 
+	php_info_print_table_start();
 	php_info_print_table_header(2, "Threads support", "enabled");
 	php_info_print_table_end();
 
@@ -244,7 +247,7 @@ PHP_MINFO_FUNCTION(threads)
 /* }}} */
 
 
-THR_THREAD_PROC(phpthreads_create) { 
+THR_THREAD_PROC(phpthreads_create) {
 
 	zval *result = NULL;
 	zend_file_handle file_handle;
@@ -262,18 +265,18 @@ THR_THREAD_PROC(phpthreads_create) {
 	/* we need to have the same context as the parent thread */
 	SG(server_context) = THR_SG(thread->parent_tls,server_context);
 
-	/* 
+	/*
 	   TODO: copy system level data now.  We need copy the global zend
-	   structures so that this thread has it's own copy of them. 
+	   structures so that this thread has it's own copy of them.
 	*/
 	SG(request_info).path_translated = estrdup(THR_SG(thread->parent_tls,request_info).path_translated);
 	/* copy our arguments */
 	COPY_PZVAL_TO_ZVAL(callback,(zval *)thread->callback);
 	COPY_PZVAL_TO_ZVAL(args,(zval *)thread->args[0]);
 	argv[0] = &args;
-	/* notify we're done copying, don't touch 'thread' after this, 
+	/* notify we're done copying, don't touch 'thread' after this,
 	   it will be invalid memory! */
-	thr_set_event(thread->start_event);	
+	thr_set_event(thread->start_event);
 
 	php_request_startup(TSRMLS_C);
 
@@ -287,8 +290,8 @@ THR_THREAD_PROC(phpthreads_create) {
 	SG(request_info).no_headers = 1;
 
 	file_handle.handle.fp = VCWD_FOPEN(SG(request_info).path_translated, "rb");
-	file_handle.filename = SG(request_info).path_translated;                       
-	
+	file_handle.filename = SG(request_info).path_translated;
+
 	file_handle.type = ZEND_HANDLE_FP;
 	file_handle.opened_path = NULL;
 	file_handle.free_filename = 0;
@@ -297,7 +300,7 @@ THR_THREAD_PROC(phpthreads_create) {
 	//PG(during_request_startup) = 0;
 
 	op_array = zend_compile_file(&file_handle, ZEND_INCLUDE TSRMLS_CC);
-	
+
 //	EG(return_value_ptr_ptr) = &result;
 	EG(active_op_array) = op_array;
 
@@ -309,10 +312,10 @@ THR_THREAD_PROC(phpthreads_create) {
 	if (EG(active_op_array)) {
 		EG(return_value_ptr_ptr) = &local_retval;
 
-		/* start the thread in php user land! Instead of calling 
+		/* start the thread in php user land! Instead of calling
 		   php_execute_script, we've copied the stuff and can now
 		   simply call into a user function */
-		 
+
 		//retval = (zend_execute_scripts(ZEND_REQUIRE TSRMLS_CC, NULL, 3, prepend_file_p, primary_file, append_file_p) == SUCCESS);
 		//zend_execute(EG(active_op_array) TSRMLS_CC);
 		if (!call_user_function(EG(function_table), NULL, &callback, local_retval, 1, argv TSRMLS_CC ))  {
@@ -325,7 +328,7 @@ THR_THREAD_PROC(phpthreads_create) {
 		//zval_ptr_dtor(EG(return_value_ptr_ptr));
 
 		local_retval = NULL;
-		
+
 #ifdef ZEND_ENGINE_2
 		destroy_op_array(EG(active_op_array) TSRMLS_CC);
 #else
@@ -336,9 +339,9 @@ THR_THREAD_PROC(phpthreads_create) {
 	}
 
 	php_request_shutdown(NULL);
- 
+
 	thr_thread_exit(0);
-} 
+}
 
 /* {{{ proto string thread_start(string function_name, [any args])
    Return a string to confirm that the module is compiled in */
@@ -363,43 +366,43 @@ PHP_FUNCTION(thread_start)
 	   parent threads data */
 	thr_wait_event(thread->start_event,THR_INFINITE);
 	zend_llist_add_element(&THREADS_G(children), (void *)thread);
-	RETURN_TRUE; 
+	RETURN_TRUE;
 }
 /* }}} */
 
 
 /* THR_THREAD_PROC(phpthreads_include) {  */
 void phpthreads_include (void * data) {
-    
+
 	zval *result = NULL;
     zend_op_array *op_array;
 	int callback_len = 0;
 	zend_file_handle file_handle;
 	THR_THREAD *thread = (THR_THREAD *) data;
 	/* void **thr_data = thread->args; */
-	char *script_file; 
-	
+	char *script_file;
+
 	/*char *script_file = (char *)estrdup((char *) thr_data[0]);*/
 	//THR_SHARED_VARS *vars = (THR_SHARED_VARS *) thread->args[1];
 	TSRMLS_FETCH();
 
 	script_file = (char *)  thread->args[0];
-	THR_PRINTF(("starting thread %s \n",  script_file)) 
+	THR_PRINTF(("starting thread %s \n",  script_file))
 
 	thread->args[0] = NULL;
 	/* we need to have the same context as the parent thread */
 	SG(server_context) = THR_SG(thread->parent_tls,server_context);
-	
+
 	/* do standard stuff just like cli sapi */
 
 	php_request_startup(TSRMLS_C);
 
 	THREADS_G(self) = thread; /* is ok */
 	//shared_vars = vars; /* is ok */
-	
-	THR_PRINTF(("I'm done doing the unsafe stuff\n")); 
+
+	THR_PRINTF(("I'm done doing the unsafe stuff\n"));
 	thr_set_event(thread->start_event);
-	
+
 	SG(request_info).path_translated = script_file;
 
 	/* this can be an issue we have to deal with somehow */
@@ -407,16 +410,16 @@ void phpthreads_include (void * data) {
 	SG(request_info).no_headers = 1;
 
 	file_handle.handle.fp = VCWD_FOPEN(script_file, "rb");
-	file_handle.filename = script_file;                       
-	
+	file_handle.filename = script_file;
+
 	file_handle.type = ZEND_HANDLE_FP;
 	file_handle.opened_path = NULL;
 	file_handle.free_filename = 1;
-	/* notify we're done copying, don't touch 'thread' after this, 
+	/* notify we're done copying, don't touch 'thread' after this,
 	   it will be invalid memory! */
-	
-	THR_PRINTF(("sent - running script \n")); 
-	
+
+	THR_PRINTF(("sent - running script \n"));
+
 	op_array = zend_compile_file(&file_handle, ZEND_INCLUDE TSRMLS_CC);
 	zend_destroy_file_handle(&file_handle TSRMLS_CC);
 
@@ -430,22 +433,22 @@ void phpthreads_include (void * data) {
 	op_array = NULL;
 
 	//php_execute_script(&file_handle TSRMLS_CC);
-	
-	THR_PRINTF(("done running script \n")); 
-	
+
+	THR_PRINTF(("done running script \n"));
+
 	/* self destruct  DOES NOT WORK FOR SOME REASON! */
 
 	php_request_shutdown(NULL); /* NOW IT WORKS */
-	
-	THR_PRINTF(("done request shutdown \n")); 
+
+	THR_PRINTF(("done request shutdown \n"));
 
 	/* found in tsrm.c and is extremly useful */
 	ts_free_thread();
-	
+
 	free(thread);
 	thr_thread_exit(0);
 
-} 
+}
 
 /* {{{ proto string thread_start(string filename)
    Return a string to confirm that the module is compiled in */
@@ -461,8 +464,8 @@ PHP_FUNCTION(thread_include)
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &script_file_in,&len) == FAILURE) {
 		RETURN_FALSE;
-	} 
-	 
+	}
+
 //	if (!shared_vars) {
 		/* only the master thread creates this */
                 /* avoid emalloc ... - it gets totally confused with the threading stuff */
@@ -481,13 +484,13 @@ PHP_FUNCTION(thread_include)
 	thread->args[0] =  script_file;
 	thread->args[1] =  NULL;
 	THR_PRINTF(("value of args is %x\n", thread->args));
-	 
-	threadid = thr_thread_create(thread, (void *) phpthreads_include); 
+
+	threadid = thr_thread_create(thread, (void *) phpthreads_include);
 	/* we wait here until the child thread has copied the
 	   parent threads data */
-	
-	THR_PRINTF(("done creating thread  - waiting for all clear  \n")) 
-    
+
+	THR_PRINTF(("done creating thread  - waiting for all clear  \n"))
+
 	/* waiting for thread to start... */
 	thr_wait_event(thread->start_event,THR_INFINITE);
 	THR_PRINTF(("got message that thread had finished initializing   \n"))
@@ -506,7 +509,7 @@ PHP_FUNCTION(thread_set)
 	zval *var;
 	zval *newvar = NULL, **xvar=NULL;
 	THR_SHARED_VARS *vars = shared_vars;
-#ifdef USE_SERIALIZE	
+#ifdef USE_SERIALIZE
 	smart_str new_var = {0};
 	char *ser_str = NULL;
 	php_serialize_data_t var_hash;
@@ -516,11 +519,11 @@ PHP_FUNCTION(thread_set)
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz", &name,&len,&var) == FAILURE) {
 		RETURN_FALSE;
-	} 
+	}
 
 	THR_PRINTF(("thread:thread_set==%s==\n", name));
 
-#ifdef USE_SERIALIZE	
+#ifdef USE_SERIALIZE
 	/* serialize variables that will be shared */
 	PHP_VAR_SERIALIZE_INIT(var_hash);
 	php_var_serialize(&new_var, &var, &var_hash TSRMLS_CC);
@@ -530,7 +533,7 @@ PHP_FUNCTION(thread_set)
 	thr_acquire_write_lock(shared_vars->rwlock);
 	zend_hash_update(&shared_vars->vars, name, len+1, ser_str, new_var.len + 1,NULL);
 	thr_release_write_lock(shared_vars->rwlock);
-    
+
 	THR_PRINTF(("thread_set: setting serialized var:\n %s \n\n\n", ser_str));
 
 	smart_str_free(&new_var);
@@ -539,7 +542,7 @@ PHP_FUNCTION(thread_set)
 	   and to allow for resources to be shared (if possible?) */
 	/* TODO: need to make a complete copy of var */
 	thr_acquire_write_lock(shared_vars->rwlock);
-	
+
 	switch(Z_TYPE_PP(&var)) {
 		case IS_RESOURCE:
 			//TODO: special Handling for Resources
@@ -570,7 +573,7 @@ PHP_FUNCTION(thread_set)
 
 	thr_release_write_lock(shared_vars->rwlock);
 #endif
-	RETURN_TRUE; 
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -590,7 +593,7 @@ PHP_FUNCTION(thread_get)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name,&len) == FAILURE) {
 		RETURN_FALSE;
 	}
-    
+
     THR_PRINTF(("thread_get: Trying to return %s\n", name));
 
 #ifdef USE_SERIALIZE
@@ -604,7 +607,7 @@ PHP_FUNCTION(thread_get)
 				zend_error(E_WARNING, "%s(): message corrupted", get_active_function_name(TSRMLS_C));
 				RETVAL_FALSE;
 			}
-		
+
 
 			REPLACE_ZVAL_VALUE(&return_value, tmp, 0);
 			zval_copy_ctor(return_value);
@@ -617,7 +620,7 @@ PHP_FUNCTION(thread_get)
 	}
 	thr_release_read_lock(shared_vars->rwlock);
 #else
-	/* for some reason, we cannot get zval's back if set from a different 
+	/* for some reason, we cannot get zval's back if set from a different
 	   thread */
 	thr_acquire_read_lock(shared_vars->rwlock);
 	if (zend_hash_find(&shared_vars->vars, name, len+1, (void **)&tmp) == SUCCESS) {
@@ -678,7 +681,7 @@ PHP_FUNCTION(thread_unset)
 		THR_PRINTF(("thread_unset: unsetting %s \n", name));
 		zend_hash_del(&shared_vars->vars, name, len);
 	}
-	
+
 	RETURN_TRUE;
 
 }
@@ -692,7 +695,7 @@ PHP_FUNCTION(thread_mutex_init)
 	/* NOTE: we create the mutex, stuff it into shared thread storage
 	   under the provided name.  Any thread can then use that mutex
 	   by using the name of the mutex, rather than the value */
-	RETURN_FALSE; 
+	RETURN_FALSE;
 }
 /* }}} */
 
@@ -700,7 +703,7 @@ PHP_FUNCTION(thread_mutex_init)
    destroy a mutex resource */
 PHP_FUNCTION(thread_mutex_destroy)
 {
-	RETURN_FALSE; 
+	RETURN_FALSE;
 }
 /* }}} */
 
@@ -708,7 +711,7 @@ PHP_FUNCTION(thread_mutex_destroy)
    blocking lock on a mutex */
 PHP_FUNCTION(thread_lock)
 {
-	RETURN_FALSE; 
+	RETURN_FALSE;
 }
 /* }}} */
 
@@ -716,7 +719,7 @@ PHP_FUNCTION(thread_lock)
    non-blocking lock on a mutex */
 PHP_FUNCTION(thread_lock_try)
 {
-	RETURN_FALSE; 
+	RETURN_FALSE;
 }
 /* }}} */
 
@@ -724,7 +727,7 @@ PHP_FUNCTION(thread_lock_try)
    unlock a locked mutex */
 PHP_FUNCTION(thread_unlock)
 {
-	RETURN_FALSE; 
+	RETURN_FALSE;
 }
 /* }}} */
 
@@ -739,3 +742,4 @@ PHP_FUNCTION(thread_unlock)
  * vim600: noet sw=4 ts=4 fdm=marker
  * vim<600: noet sw=4 ts=4
  */
+

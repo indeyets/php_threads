@@ -18,21 +18,21 @@
 */
 
 #ifndef PHP_THREADS_H
-#define PHP_THREADS_H
+# define PHP_THREADS_H
 
 extern zend_module_entry threads_module_entry;
-#define phpext_threads_ptr &threads_module_entry
+# define phpext_threads_ptr &threads_module_entry
 
-#ifdef PHP_WIN32
-#define PHP_THREADS_API __declspec(dllexport)
-#else
-#define PHP_THREADS_API
-#endif
+# ifdef PHP_WIN32
+#  define PHP_THREADS_API __declspec(dllexport)
+# else
+#  define PHP_THREADS_API
+# endif
 
-#ifdef ZTS
-#include "TSRM.h"
-#include "threadapi.h"
-#endif
+# ifdef ZTS
+#  include "TSRM.h"
+#  include "threadapi.h"
+# endif
 
 PHP_MINIT_FUNCTION(threads);
 PHP_MSHUTDOWN_FUNCTION(threads);
@@ -81,21 +81,22 @@ ZEND_END_MODULE_GLOBALS(threads)
    during thread startup.  Most of these are not used yet, but here
    for convenience until development is done. */
 
-#define THR_TSRMG(ptsrm_ls, id, type, element)	(((type) (*((void ***) ptsrm_ls))[TSRM_UNSHUFFLE_RSRC_ID(id)])->element)
-#define THR_SG(p,v) THR_TSRMG(p,sapi_globals_id, sapi_globals_struct *, v)
-#define THR_CG(p,v) THR_TSRMG(p,compiler_globals_id, zend_compiler_globals *, v)
-#define THR_EG(p,v) THR_TSRMG(p,executor_globals_id, zend_executor_globals *, v)
-#define THR_AG(p,v) THR_TSRMG(p,alloc_globals_id, zend_alloc_globals *, v)
-#define THR_LANG_SCNG(p,v) THR_TSRMG(p,language_scanner_globals_id, zend_scanner_globals *, v)
-#define THR_INI_SCNG(p,v) THR_TSRMG(p,ini_scanner_globals_id, zend_scanner_globals *, v)
-#define THR_PG(p,v) THR_TSRMG(p,core_globals_id, php_core_globals *, v)
+# define THR_TSRMG(ptsrm_ls, id, type, element)	(((type) (*((void ***) ptsrm_ls))[TSRM_UNSHUFFLE_RSRC_ID(id)])->element)
+# define THR_SG(p,v) THR_TSRMG(p,sapi_globals_id, sapi_globals_struct *, v)
+# define THR_CG(p,v) THR_TSRMG(p,compiler_globals_id, zend_compiler_globals *, v)
+# define THR_EG(p,v) THR_TSRMG(p,executor_globals_id, zend_executor_globals *, v)
+# define THR_AG(p,v) THR_TSRMG(p,alloc_globals_id, zend_alloc_globals *, v)
+# define THR_LANG_SCNG(p,v) THR_TSRMG(p,language_scanner_globals_id, zend_scanner_globals *, v)
+# define THR_INI_SCNG(p,v) THR_TSRMG(p,ini_scanner_globals_id, zend_scanner_globals *, v)
+# define THR_PG(p,v) THR_TSRMG(p,core_globals_id, php_core_globals *, v)
 
-#ifdef ZTS
-#define THREADS_G(v) TSRMG(threads_globals_id, zend_threads_globals *, v)
-#else
-#define THREADS_G(v) (threads_globals.v)
-#endif
+# ifdef ZTS
+#  define THREADS_G(v) TSRMG(threads_globals_id, zend_threads_globals *, v)
+# else
+#  define THREADS_G(v) (threads_globals.v)
+# endif
 
 #endif	/* PHP_EXTNAME_H */
-
+ 
 /* __footer_here__ */
+
