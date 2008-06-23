@@ -232,7 +232,7 @@ PHP_RSHUTDOWN_FUNCTION(threads)
 
 	} else {
 		//thr_wait_exit(THREADS_G(self));
-		THR_PRINTF(("its a meeeeeee\n"));
+		//Nothing to do at this point
 		//thr_thread_exit(0);
 	}
 	THR_PRINTF(("request shutdown in thread\n"));
