@@ -54,6 +54,7 @@ void thr_close_rwlock(THR_RW_LOCK *rwlock)
 #elif defined(PTHREADS)
 	pthread_mutex_destroy(rwlock->lock);
 	thr_close_event(rwlock->event);
+	free(rwlock->lock);
 #else
 #endif
 	free(rwlock);
@@ -273,7 +274,7 @@ void thr_close_event(THR_EVENT event)
 	pthread_mutex_destroy(event->mutex);
 	free(event->cond);
 	free(event->mutex);
-	/* free(event); */ 
+	free(event); 
 #elif defined(NETWARE)
 #elif defined(GNUPTH)
 #elif defined(NSAPI)
