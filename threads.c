@@ -254,8 +254,8 @@ PHP_MINFO_FUNCTION(threads)
 /* }}} */
 
 
-THR_THREAD_PROC(phpthreads_create) { 
-
+THR_THREAD_PROC(phpthreads_create)
+{
 	zval *result = NULL;
 	zend_file_handle file_handle;
 //	zval ret_val;

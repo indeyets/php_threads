@@ -37,7 +37,7 @@
 
 #elif defined(PTHREADS)
 # define THR_THREAD_T pthread_t
-# define THR_THREAD_PROC(a) void *a(void *data)
+# define THR_THREAD_PROC(a) void a(void *data)
 # define THR_THREAD_PROC_P  void *
 
 typedef struct _cond_var {
