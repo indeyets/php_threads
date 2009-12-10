@@ -145,7 +145,6 @@ static void _php_threads_join_children(void *data)
  
 static void _php_threads_init_globals(zend_threads_globals *threads_globals)
 {
-	return SUCCESS;
 }
 /* }}} */
 
@@ -582,7 +581,8 @@ PHP_FUNCTION(thread_set)
 			//TODO: This doesn't work for calls like thread_set('var', 'value')
 			//Only for calls like thread_set('var', $var);
 			/*MAKE_STD_ZVAL(target);
-			*target = *var;			zval_copy_ctor(target);*/ //Commenting this in does produce memleaks reported by DEBUG-mode
+			*target = *var;
+			zval_copy_ctor(target);*/ //Commenting this in does produce memleaks reported by DEBUG-mode
 			zend_hash_update(&shared_vars->vars, name, len+1, (void *) &var, sizeof(zval *),NULL);
 			break;
 
