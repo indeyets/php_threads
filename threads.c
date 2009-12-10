@@ -414,6 +414,7 @@ void phpthreads_include (void * data) {
 	//shared_vars = vars; /* is ok */
 	
 	THR_PRINTF(("I'm done doing the unsafe stuff\n")); 
+	thread->start_event = thr_create_event();
 	thr_set_event(thread->start_event);
 	
 	SG(request_info).path_translated = script_file;
@@ -434,7 +435,14 @@ void phpthreads_include (void * data) {
 	THR_PRINTF(("sent - running script \n")); 
 	
 	op_array = zend_compile_file(&file_handle, ZEND_INCLUDE TSRMLS_CC);
+
 	zend_destroy_file_handle(&file_handle TSRMLS_CC);
+
+	if (NULL == op_array) {
+		THR_PRINTF(("zend_compile_file() failed\n"));
+		ts_free_thread();
+		thr_thread_exit(0);
+	}
 
 	EG(return_value_ptr_ptr) = &result;
 	EG(active_op_array) = op_array;
@@ -488,7 +496,7 @@ PHP_FUNCTION(thread_include)
 //		zend_hash_init(&shared_vars->vars, 0, NULL, NULL,0);
 //		vars = shared_vars;
 //	}
-	script_file= (char *) emalloc(len + 1);
+	script_file= (char *) malloc(len + 1);
 	strncpy(script_file , script_file_in,  len+1);
          /* avoid emalloc ... - it gets totally confused with the threading stuff */
 	thread = (THR_THREAD *) malloc(sizeof(THR_THREAD));
@@ -502,24 +510,19 @@ PHP_FUNCTION(thread_include)
 	thread->id = thr_thread_create(thread, (void *) phpthreads_include); 
 	/* we wait here until the child thread has copied the
 	   parent threads data */
-	
-	THR_PRINTF(("done creating thread  - waiting for all clear  \n")) 
 
-    
-	/* waiting for thread to start... */
-#ifdef TSRM_WIN32
+	THR_PRINTF(("done creating thread  - waiting for thread to start\n"))
 	thr_wait_event(thread->start_event, THR_INFINITE);
-#endif
 
-	THR_PRINTF(("got message that thread had finished initializing   \n"))
-	
+	THR_PRINTF(("got message that thread had finished initializing\n"))
+
 //	thread->args[0] = NULL;
 
 	//zend_hash_index_update(&THREADS_G(children), threadid, (void *) thread, sizeof(THR_THREAD *), NULL);
-	zend_llist_add_element(&THREADS_G(children), (void *)thread);	
+	zend_llist_add_element(&THREADS_G(children), (void *)thread);
 
 	free(thread);
-	efree(script_file);
+	free(script_file);
 
 	RETURN_TRUE;
 }
